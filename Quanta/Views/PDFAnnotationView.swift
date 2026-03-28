@@ -21,9 +21,7 @@ struct PageAnnotations: Codable {
         (try? JSONEncoder().encode(self)) ?? Data()
     }
 
-    enum CodingKeys: String, CodingKey {
-        case pages
-    }
+    enum CodingKeys: String, CodingKey { case pages }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -46,6 +44,9 @@ struct PageAnnotations: Codable {
 struct PDFAnnotationView: View {
     let pdfData: Data
     @Binding var annotationsData: Data
+    var selectedTool: CanvasTool
+    var selectedColor: Color
+    var onUndoManagerReady: ((UndoManager?) -> Void)?
 
     @State private var currentPage = 0
     @State private var pageCount = 0
@@ -61,15 +62,19 @@ struct PDFAnnotationView: View {
 
                     if let image = pageImage {
                         let fitSize = fitSize(for: image.size, in: geo.size)
-
                         ZStack {
                             Image(uiImage: image)
                                 .resizable()
                                 .frame(width: fitSize.width, height: fitSize.height)
-                                .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
 
-                            DrawingCanvasView(drawingData: $currentDrawing, isOverlay: true)
-                                .frame(width: fitSize.width, height: fitSize.height)
+                            DrawingCanvasView(
+                                drawingData: $currentDrawing,
+                                selectedTool: selectedTool,
+                                selectedColor: selectedColor,
+                                isOverlay: true,
+                                onUndoManagerReady: onUndoManagerReady
+                            )
+                            .frame(width: fitSize.width, height: fitSize.height)
                         }
                     }
                 }
@@ -113,7 +118,7 @@ struct PDFAnnotationView: View {
         }
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity)
-        .background(.ultraThinMaterial)
+        .background(QuantaTheme.toolbarBg)
     }
 
     private func loadPDF() {
@@ -126,8 +131,7 @@ struct PDFAnnotationView: View {
         guard let document = PDFDocument(data: pdfData),
               let page = document.page(at: currentPage) else { return }
         let bounds = page.bounds(for: .mediaBox)
-        let scale: CGFloat = 2.0
-        pageImage = page.thumbnail(of: CGSize(width: bounds.width * scale, height: bounds.height * scale), for: .mediaBox)
+        pageImage = page.thumbnail(of: CGSize(width: bounds.width * 2, height: bounds.height * 2), for: .mediaBox)
     }
 
     private func changePage(to newPage: Int) {

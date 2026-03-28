@@ -1,111 +1,78 @@
 import SwiftUI
 
-struct FloatingToolbar: View {
-    @Binding var canvasStyle: CanvasStyle
+struct CanvasToolbar: View {
+    @Binding var selectedTool: CanvasTool
+    @Binding var selectedColor: Color
     let onUndo: () -> Void
     let onRedo: () -> Void
-    let onImportPDF: () -> Void
-    let onExport: () -> Void
-
-    @State private var position: CGPoint = CGPoint(x: 200, y: 60)
-    @State private var isDragging = false
-    @State private var showCanvasStylePicker = false
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "line.3.horizontal")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .frame(width: 20)
-
-            Divider().frame(height: 20)
-
-            toolButton(icon: "arrow.uturn.backward", action: onUndo)
-            toolButton(icon: "arrow.uturn.forward", action: onRedo)
-
-            Divider().frame(height: 20)
-
-            Button {
-                showCanvasStylePicker.toggle()
-            } label: {
-                Image(systemName: canvasStyle.icon)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.primary)
-                    .frame(width: 36, height: 36)
-                    .contentShape(Rectangle())
-            }
-            .popover(isPresented: $showCanvasStylePicker) {
-                canvasStylePopover
+        HStack(spacing: 0) {
+            // Drawing tools
+            HStack(spacing: 2) {
+                toolButton(.pen)
+                toolButton(.highlighter)
+                toolButton(.eraser)
+                toolButton(.lasso)
             }
 
-            Divider().frame(height: 20)
+            divider
 
-            toolButton(icon: "doc.badge.plus", action: onImportPDF)
-            toolButton(icon: "square.and.arrow.up", action: onExport)
+            // Color picker
+            ColorPicker("", selection: $selectedColor, supportsOpacity: false)
+                .labelsHidden()
+                .frame(width: 30, height: 30)
+                .padding(.horizontal, 12)
+
+            divider
+
+            // Undo / Redo
+            HStack(spacing: 2) {
+                actionButton(icon: "arrow.uturn.backward", action: onUndo)
+                actionButton(icon: "arrow.uturn.forward", action: onRedo)
+            }
         }
-        .floatingPill()
-        .scaleEffect(isDragging ? 1.05 : 1.0)
-        .position(position)
-        .gesture(
-            DragGesture()
-                .onChanged { value in
-                    withAnimation(.interactiveSpring()) {
-                        isDragging = true
-                        position = value.location
-                    }
-                }
-                .onEnded { _ in
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        isDragging = false
-                    }
-                }
-        )
-        .animation(.spring(response: 0.3), value: isDragging)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(QuantaTheme.toolbarBg)
     }
 
-    private func toolButton(icon: String, action: @escaping () -> Void) -> some View {
+    private var divider: some View {
+        Rectangle()
+            .fill(.white.opacity(0.1))
+            .frame(width: 1, height: 28)
+            .padding(.horizontal, 4)
+    }
+
+    private func toolButton(_ tool: CanvasTool) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                selectedTool = tool
+            }
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: tool.icon)
+                    .font(.system(size: 17, weight: .medium))
+                    .frame(height: 22)
+
+                RoundedRectangle(cornerRadius: 1)
+                    .frame(width: 20, height: 2.5)
+                    .opacity(selectedTool == tool ? 1 : 0)
+            }
+            .foregroundStyle(selectedTool == tool ? QuantaTheme.gold : .white.opacity(0.5))
+            .frame(width: 50, height: 40)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func actionButton(icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.primary)
-                .frame(width: 36, height: 36)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(.white.opacity(0.6))
+                .frame(width: 44, height: 40)
                 .contentShape(Rectangle())
-        }
-    }
-
-    private var canvasStylePopover: some View {
-        VStack(spacing: 0) {
-            styleRow(style: .blank)
-            styleRow(style: .ruled)
-            styleRow(style: .grid)
-            styleRow(style: .dotted)
-        }
-        .padding(.vertical, 6)
-        .frame(width: 180)
-        .presentationCompactAdaptation(.popover)
-    }
-
-    private func styleRow(style: CanvasStyle) -> some View {
-        Button {
-            canvasStyle = style
-            showCanvasStylePicker = false
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: style.icon)
-                    .font(.system(size: 14, weight: .medium))
-                    .frame(width: 24)
-                Text(style.label)
-                    .font(QuantaTheme.subheadline)
-                Spacer()
-                if canvasStyle == style {
-                    Image(systemName: "checkmark")
-                        .font(.caption.bold())
-                        .foregroundStyle(Color.accentColor)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

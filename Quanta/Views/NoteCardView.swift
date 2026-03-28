@@ -2,7 +2,6 @@ import SwiftUI
 
 struct NoteCardView: View {
     @ObservedObject var note: Note
-    var accentColor: Color?
 
     private var formattedDate: String {
         guard let date = note.updatedAt else { return "" }
@@ -11,78 +10,87 @@ struct NoteCardView: View {
         return formatter.localizedString(for: date, relativeTo: Date())
     }
 
-    private var subjectName: String? {
-        note.subject?.name
-    }
-
-    private var subjectColorValue: Color {
-        accentColor ?? QuantaTheme.color(for: note.subject?.colorName ?? "blue")
-    }
-
     var body: some View {
-        HStack(spacing: 14) {
+        VStack(alignment: .leading, spacing: 0) {
             // Thumbnail
-            thumbnailView
-                .frame(width: 80, height: 60)
-                .clipShape(RoundedRectangle(cornerRadius: QuantaTheme.smallRadius, style: .continuous))
+            ZStack {
+                Color(white: 0.15)
+
+                if let data = note.thumbnailData, let img = UIImage(data: data) {
+                    Image(uiImage: img)
+                        .resizable()
+                        .scaledToFill()
+                } else if note.pdfData != nil {
+                    Image(systemName: "doc.richtext.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(.white.opacity(0.2))
+                } else {
+                    Image(systemName: "pencil.tip")
+                        .font(.system(size: 32))
+                        .foregroundStyle(.white.opacity(0.15))
+                }
+            }
+            .aspectRatio(4.0 / 3.0, contentMode: .fit)
+            .clipped()
 
             // Info
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(note.title ?? "Untitled")
                     .font(QuantaTheme.headline)
+                    .foregroundStyle(.white)
                     .lineLimit(1)
-                    .foregroundStyle(.primary)
 
                 HStack(spacing: 6) {
-                    if note.pdfData != nil {
-                        Label("PDF", systemImage: "doc.richtext.fill")
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.blue.gradient, in: Capsule())
+                    if let subject = note.subject {
+                        SubjectPill(subject: subject)
                     }
 
-                    if let name = subjectName {
-                        Text(name)
-                            .font(.system(size: 10, weight: .semibold, design: .rounded))
-                            .foregroundStyle(subjectColorValue)
+                    if note.pdfData != nil {
+                        Text("PDF")
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
                             .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(subjectColorValue.opacity(0.12), in: Capsule())
+                            .padding(.vertical, 3)
+                            .background(.blue.gradient, in: Capsule())
                     }
 
                     Spacer()
 
                     Text(formattedDate)
                         .font(QuantaTheme.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.white.opacity(0.35))
                         .monospacedDigit()
                 }
             }
+            .padding(12)
+            .background(QuantaTheme.cardBg)
         }
-        .padding(.vertical, 6)
+        .clipShape(RoundedRectangle(cornerRadius: QuantaTheme.cornerRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: QuantaTheme.cornerRadius, style: .continuous)
+                .stroke(QuantaTheme.cardBorder, lineWidth: 1)
+        )
     }
+}
 
-    @ViewBuilder
-    private var thumbnailView: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: QuantaTheme.smallRadius, style: .continuous)
-                .fill(Color(.systemGray6))
+// MARK: - Subject Pill
 
-            if let data = note.thumbnailData, let uiImage = UIImage(data: data) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFill()
-            } else if note.pdfData != nil {
-                Image(systemName: "doc.richtext.fill")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-            } else {
-                Image(systemName: "pencil.tip")
-                    .font(.title3)
-                    .foregroundStyle(.quaternary)
-            }
+struct SubjectPill: View {
+    @ObservedObject var subject: Subject
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Text(subject.emoji ?? "📓")
+                .font(.system(size: 9))
+            Text(subject.name ?? "")
+                .font(.system(size: 9, weight: .semibold, design: .rounded))
         }
+        .foregroundStyle(.white.opacity(0.9))
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(
+            QuantaTheme.color(for: subject.colorName ?? "blue").opacity(0.5),
+            in: Capsule()
+        )
     }
 }

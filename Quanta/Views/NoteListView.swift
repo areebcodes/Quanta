@@ -1,183 +1,211 @@
 import SwiftUI
 import CoreData
+import PDFKit
+import UniformTypeIdentifiers
 
-struct NoteListView: View {
+struct DashboardView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @FetchRequest private var notes: FetchedResults<Note>
+    @Binding var path: NavigationPath
 
-    @Binding var selectedNote: Note?
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \Note.updatedAt, ascending: false)],
+        animation: .spring(response: 0.35)
+    )
+    private var notes: FetchedResults<Note>
+
     @State private var searchText = ""
-    @State private var sortNewestFirst = true
+    @State private var showPDFImporter = false
 
-    let subject: Subject?
-    let showAll: Bool
-    let title: String
-    let subjectColor: Color?
-
-    init(subject: Subject?, showAll: Bool, selectedNote: Binding<Note?>) {
-        self.subject = subject
-        self.showAll = showAll
-        self._selectedNote = selectedNote
-
-        let request = Note.fetchRequest()
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \Note.updatedAt, ascending: false)]
-        if !showAll, let subject {
-            request.predicate = NSPredicate(format: "subject == %@", subject)
-            self.title = subject.name ?? "Notes"
-            self.subjectColor = QuantaTheme.color(for: subject.colorName ?? "blue")
-        } else {
-            self.title = "All Notes"
-            self.subjectColor = nil
-        }
-        _notes = FetchRequest(fetchRequest: request)
-    }
+    private let columns = [
+        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: 16),
+    ]
 
     private var filteredNotes: [Note] {
-        let base = searchText.isEmpty
-            ? Array(notes)
-            : notes.filter { ($0.title ?? "").localizedCaseInsensitiveContains(searchText) }
-        return sortNewestFirst ? base : base.reversed()
+        if searchText.isEmpty { return Array(notes) }
+        return notes.filter { ($0.title ?? "").localizedCaseInsensitiveContains(searchText) }
     }
 
     var body: some View {
-        Group {
+        ZStack {
+            // Background
+            QuantaTheme.darkBg.ignoresSafeArea()
+
             if notes.isEmpty {
                 emptyState
             } else {
-                noteList
+                noteGrid
+            }
+
+            // Floating + button
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    fabButton
+                        .padding(.trailing, 28)
+                        .padding(.bottom, 28)
+                }
             }
         }
-        .navigationTitle(title)
-        .searchable(text: $searchText, prompt: "Search notes")
-        .toolbar { listToolbar }
+        .navigationBarHidden(true)
+        .fileImporter(isPresented: $showPDFImporter, allowedContentTypes: [.pdf]) { result in
+            importPDF(result: result)
+        }
     }
 
-    // MARK: - Note List
+    // MARK: - Grid
 
-    private var noteList: some View {
-        List(selection: $selectedNote) {
-            ForEach(filteredNotes, id: \.objectID) { note in
-                NoteCardView(note: note, accentColor: subjectColor)
-                    .tag(note)
-                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                    .listRowSeparator(.hidden)
-                    .contextMenu {
+    private var noteGrid: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                header
+                searchBar
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(filteredNotes, id: \.objectID) { note in
                         Button {
-                            duplicateNote(note)
+                            path.append(note.objectID)
                         } label: {
-                            Label("Duplicate", systemImage: "doc.on.doc")
+                            NoteCardView(note: note)
                         }
-
-                        if !showAll {
-                            Button {
-                                note.subject = nil
-                                try? viewContext.save()
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                deleteNote(note)
                             } label: {
-                                Label("Remove from Subject", systemImage: "folder.badge.minus")
+                                Label("Delete", systemImage: "trash")
                             }
                         }
-
-                        Divider()
-
-                        Button(role: .destructive) {
-                            deleteNote(note)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
                     }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 100) // space for FAB
             }
         }
-        .listStyle(.plain)
     }
 
     // MARK: - Empty State
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("No Notes Yet", systemImage: "pencil.tip.crop.circle")
-                .font(QuantaTheme.title)
-        } description: {
-            Text("Tap + to create your first note")
+        VStack(spacing: 20) {
+            Spacer()
+
+            Text("Quanta")
+                .font(.system(size: 48, weight: .heavy, design: .rounded))
+                .foregroundStyle(QuantaTheme.gold)
+
+            Text("Your notes live here")
                 .font(QuantaTheme.subheadline)
-        } actions: {
-            Button(action: createNote) {
-                Label("Create Note", systemImage: "plus")
+                .foregroundStyle(.white.opacity(0.5))
+
+            Menu {
+                Button { createNote() } label: {
+                    Label("New Note", systemImage: "pencil.tip")
+                }
+                Button { showPDFImporter = true } label: {
+                    Label("Import PDF", systemImage: "doc.badge.plus")
+                }
+            } label: {
+                Text("Create")
+                    .font(QuantaTheme.headline)
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 14)
+                    .background(QuantaTheme.gold, in: Capsule())
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .buttonBorderShape(.capsule)
+            .padding(.top, 8)
+
+            Spacer()
         }
     }
 
-    // MARK: - Toolbar
+    // MARK: - Header
 
-    @ToolbarContentBuilder
-    private var listToolbar: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            Button(action: createNote) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title3)
-                    .symbolRenderingMode(.hierarchical)
-            }
+    private var header: some View {
+        HStack {
+            Text("Quanta")
+                .font(QuantaTheme.wordmark)
+                .foregroundStyle(QuantaTheme.gold)
+            Spacer()
         }
-        ToolbarItem(placement: .secondaryAction) {
-            Menu {
-                Button {
-                    withAnimation { sortNewestFirst = true }
-                } label: {
-                    Label("Newest First", systemImage: sortNewestFirst ? "checkmark" : "")
-                }
-                Button {
-                    withAnimation { sortNewestFirst = false }
-                } label: {
-                    Label("Oldest First", systemImage: !sortNewestFirst ? "checkmark" : "")
-                }
-            } label: {
-                Image(systemName: "arrow.up.arrow.down.circle")
-                    .symbolRenderingMode(.hierarchical)
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+        .padding(.bottom, 8)
+    }
+
+    // MARK: - Search
+
+    private var searchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.white.opacity(0.4))
+            TextField("Search notes", text: $searchText)
+                .foregroundStyle(.white)
+                .font(QuantaTheme.body)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(QuantaTheme.searchBg, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.horizontal, 20)
+        .padding(.bottom, 20)
+    }
+
+    // MARK: - FAB
+
+    private var fabButton: some View {
+        Menu {
+            Button { createNote() } label: {
+                Label("New Note", systemImage: "pencil.tip")
             }
+            Button { showPDFImporter = true } label: {
+                Label("Import PDF", systemImage: "doc.badge.plus")
+            }
+        } label: {
+            Image(systemName: "plus")
+                .font(.title2.bold())
+                .foregroundStyle(.black)
+                .frame(width: 60, height: 60)
+                .background(QuantaTheme.gold, in: Circle())
+                .shadow(color: QuantaTheme.gold.opacity(0.4), radius: 16, y: 6)
         }
     }
 
     // MARK: - Actions
 
     private func createNote() {
-        withAnimation(.spring(response: 0.35)) {
-            let note = Note(context: viewContext)
-            note.id = UUID()
-            note.title = "Untitled"
-            note.createdAt = Date()
-            note.updatedAt = Date()
-            if !showAll {
-                note.subject = subject
-            }
-            try? viewContext.save()
-            selectedNote = note
-        }
+        let note = Note(context: viewContext)
+        note.id = UUID()
+        note.title = "Untitled"
+        note.createdAt = Date()
+        note.updatedAt = Date()
+        try? viewContext.save()
+        path.append(note.objectID)
     }
 
-    private func duplicateNote(_ note: Note) {
-        withAnimation {
-            let copy = Note(context: viewContext)
-            copy.id = UUID()
-            copy.title = "\(note.title ?? "Untitled") Copy"
-            copy.createdAt = Date()
-            copy.updatedAt = Date()
-            copy.drawingData = note.drawingData
-            copy.pdfData = note.pdfData
-            copy.annotationsData = note.annotationsData
-            copy.thumbnailData = note.thumbnailData
-            copy.canvasStyle = note.canvasStyle
-            copy.subject = note.subject
-            try? viewContext.save()
+    private func importPDF(result: Result<URL, Error>) {
+        guard case .success(let url) = result else { return }
+        guard url.startAccessingSecurityScopedResource() else { return }
+        defer { url.stopAccessingSecurityScopedResource() }
+        guard let data = try? Data(contentsOf: url) else { return }
+
+        let note = Note(context: viewContext)
+        note.id = UUID()
+        note.title = url.deletingPathExtension().lastPathComponent
+        note.createdAt = Date()
+        note.updatedAt = Date()
+        note.pdfData = data
+
+        if let doc = PDFDocument(data: data), let page = doc.page(at: 0) {
+            let thumb = page.thumbnail(of: CGSize(width: 400, height: 300), for: .mediaBox)
+            note.thumbnailData = thumb.jpegData(compressionQuality: 0.7)
         }
+
+        try? viewContext.save()
+        path.append(note.objectID)
     }
 
     private func deleteNote(_ note: Note) {
-        withAnimation(.spring(response: 0.3)) {
-            if selectedNote == note {
-                selectedNote = nil
-            }
+        withAnimation {
             viewContext.delete(note)
             try? viewContext.save()
         }

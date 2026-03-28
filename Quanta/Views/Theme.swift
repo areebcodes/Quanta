@@ -1,10 +1,24 @@
 import SwiftUI
+import CoreData
 
 // MARK: - Design System
 
 enum QuantaTheme {
-    // MARK: Typography
-    static let largeTitle = Font.system(.largeTitle, design: .rounded, weight: .bold)
+    // Brand colors
+    static let gold = Color(red: 0.961, green: 0.773, blue: 0.259)         // #F5C542
+    static let goldLight = Color(red: 0.98, green: 0.87, blue: 0.45)
+    static let goldDim = Color(red: 0.961, green: 0.773, blue: 0.259).opacity(0.25)
+
+    // Chrome
+    static let darkBg = Color.black
+    static let cardBg = Color(white: 0.10)
+    static let cardBorder = gold.opacity(0.2)
+    static let searchBg = Color(white: 0.13)
+    static let toolbarBg = Color(white: 0.06)
+    static let topBarBg = Color.black.opacity(0.88)
+
+    // Typography
+    static let wordmark = Font.system(size: 34, weight: .heavy, design: .rounded)
     static let title = Font.system(.title2, design: .rounded, weight: .bold)
     static let title3 = Font.system(.title3, design: .rounded, weight: .semibold)
     static let headline = Font.system(.headline, design: .rounded, weight: .semibold)
@@ -13,35 +27,28 @@ enum QuantaTheme {
     static let caption = Font.system(.caption, design: .rounded)
     static let captionBold = Font.system(.caption2, design: .rounded, weight: .bold)
 
-    // MARK: Radius
+    // Layout
     static let cornerRadius: CGFloat = 16
     static let smallRadius: CGFloat = 10
-    static let pillRadius: CGFloat = 24
 
-    // MARK: Spacing
-    static let padding: CGFloat = 20
-    static let smallPadding: CGFloat = 12
-    static let tinyPadding: CGFloat = 6
-
-    // MARK: Subject Colors
-    static let subjectColors: [(name: String, color: Color, darkColor: Color)] = [
-        ("red", .red, Color(red: 1.0, green: 0.35, blue: 0.35)),
-        ("orange", .orange, Color(red: 1.0, green: 0.6, blue: 0.25)),
-        ("yellow", Color(red: 0.85, green: 0.75, blue: 0.0), Color(red: 1.0, green: 0.85, blue: 0.2)),
-        ("green", Color(red: 0.2, green: 0.75, blue: 0.4), Color(red: 0.35, green: 0.85, blue: 0.5)),
-        ("mint", .mint, .mint),
-        ("teal", .teal, .teal),
-        ("blue", .blue, Color(red: 0.35, green: 0.55, blue: 1.0)),
-        ("indigo", .indigo, Color(red: 0.5, green: 0.45, blue: 1.0)),
-        ("purple", .purple, Color(red: 0.7, green: 0.4, blue: 1.0)),
-        ("pink", .pink, Color(red: 1.0, green: 0.4, blue: 0.6)),
+    // Subject colors
+    static let subjectColors: [(name: String, color: Color)] = [
+        ("red", .red),
+        ("orange", .orange),
+        ("yellow", Color(red: 0.9, green: 0.8, blue: 0.0)),
+        ("green", Color(red: 0.2, green: 0.78, blue: 0.4)),
+        ("mint", .mint),
+        ("teal", .teal),
+        ("blue", .blue),
+        ("indigo", .indigo),
+        ("purple", .purple),
+        ("pink", .pink),
     ]
 
     static func color(for name: String) -> Color {
         subjectColors.first { $0.name == name }?.color ?? .blue
     }
 
-    // MARK: Emoji Presets
     static let emojiPresets = [
         "📓", "📕", "📗", "📘", "📙", "📒",
         "🔬", "🧮", "🎨", "🎵", "📐", "🌍",
@@ -50,15 +57,40 @@ enum QuantaTheme {
     ]
 }
 
+// MARK: - Canvas Tool
+
+enum CanvasTool: String {
+    case pen
+    case highlighter
+    case eraser
+    case lasso
+
+    var icon: String {
+        switch self {
+        case .pen: "pencil.tip"
+        case .highlighter: "highlighter"
+        case .eraser: "eraser"
+        case .lasso: "lasso"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .pen: "Pen"
+        case .highlighter: "Highlighter"
+        case .eraser: "Eraser"
+        case .lasso: "Lasso"
+        }
+    }
+}
+
 // MARK: - Canvas Style
 
-enum CanvasStyle: Int16, CaseIterable, Identifiable {
+enum CanvasStyle: Int16 {
     case blank = 0
     case ruled = 1
     case grid = 2
     case dotted = 3
-
-    var id: Int16 { rawValue }
 
     var icon: String {
         switch self {
@@ -77,54 +109,4 @@ enum CanvasStyle: Int16, CaseIterable, Identifiable {
         case .dotted: "Dotted"
         }
     }
-}
-
-// MARK: - Sidebar Selection
-
-enum SidebarItem: Hashable {
-    case allNotes
-    case subject(NSManagedObjectID)
-}
-
-// MARK: - View Modifiers
-
-struct PremiumCardStyle: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
-
-    func body(content: Content) -> some View {
-        content
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: QuantaTheme.cornerRadius, style: .continuous))
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 12, x: 0, y: 6)
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.15 : 0.03), radius: 2, x: 0, y: 1)
-    }
-}
-
-struct FloatingPillStyle: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(.ultraThinMaterial, in: Capsule())
-            .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
-            .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
-    }
-}
-
-extension View {
-    func premiumCard() -> some View {
-        modifier(PremiumCardStyle())
-    }
-
-    func floatingPill() -> some View {
-        modifier(FloatingPillStyle())
-    }
-}
-
-// MARK: - Core Data Helpers
-
-import CoreData
-
-extension NSManagedObjectID: @retroactive Identifiable {
-    public var id: NSManagedObjectID { self }
 }
