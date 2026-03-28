@@ -13,6 +13,7 @@ struct SubjectListView: View {
 
     @State private var showingNewSubject = false
     @State private var editingSubject: Subject?
+    @State private var showEditSheet = false
 
     // Count all notes for "All Notes" row
     @FetchRequest(
@@ -52,6 +53,7 @@ struct SubjectListView: View {
                         .contextMenu {
                             Button {
                                 editingSubject = subject
+                                showEditSheet = true
                             } label: {
                                 Label("Edit Subject", systemImage: "pencil")
                             }
@@ -92,8 +94,8 @@ struct SubjectListView: View {
             SubjectEditorSheet(subject: nil)
                 .environment(\.managedObjectContext, viewContext)
         }
-        .sheet(item: $editingSubject) { subject in
-            SubjectEditorSheet(subject: subject)
+        .sheet(isPresented: $showEditSheet) {
+            SubjectEditorSheet(subject: editingSubject)
                 .environment(\.managedObjectContext, viewContext)
         }
         .onAppear {

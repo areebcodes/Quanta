@@ -84,7 +84,7 @@ struct FloatingToolbar: View {
 
     private var canvasStylePopover: some View {
         VStack(spacing: 4) {
-            ForEach(CanvasStyle.allCases) { style in
+            ForEach(Array(CanvasStyle.allCases), id: \.rawValue) { style in
                 Button {
                     withAnimation(.spring(response: 0.25)) {
                         canvasStyle = style
