@@ -100,7 +100,7 @@ struct FloatingToolbar: View {
                 if canvasStyle == style {
                     Image(systemName: "checkmark")
                         .font(.caption.bold())
-                        .foregroundStyle(.accentColor)
+                        .foregroundStyle(Color.accentColor)
                 }
             }
             .padding(.horizontal, 14)
