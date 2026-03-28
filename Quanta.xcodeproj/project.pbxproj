@@ -19,6 +19,10 @@
 		4A1B2C3D0000000000000049 /* NoteViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A1B2C3D0000000000000039 /* NoteViewModel.swift */; };
 		4A1B2C3D000000000000004A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4A1B2C3D000000000000003A /* Assets.xcassets */; };
 		4A1B2C3D000000000000004B /* Quanta.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 4A1B2C3D0000000000000050 /* Quanta.xcdatamodeld */; };
+		4A1B2C3D0000000000000080 /* SubjectListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A1B2C3D0000000000000070 /* SubjectListView.swift */; };
+		4A1B2C3D0000000000000081 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A1B2C3D0000000000000071 /* Theme.swift */; };
+		4A1B2C3D0000000000000082 /* CanvasBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A1B2C3D0000000000000072 /* CanvasBackgroundView.swift */; };
+		4A1B2C3D0000000000000083 /* FloatingToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A1B2C3D0000000000000073 /* FloatingToolbar.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +40,10 @@
 		4A1B2C3D000000000000003A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4A1B2C3D000000000000003B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		4A1B2C3D000000000000003C /* Quanta.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Quanta.xcdatamodel; sourceTree = "<group>"; };
+		4A1B2C3D0000000000000070 /* SubjectListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubjectListView.swift; sourceTree = "<group>"; };
+		4A1B2C3D0000000000000071 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		4A1B2C3D0000000000000072 /* CanvasBackgroundView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasBackgroundView.swift; sourceTree = "<group>"; };
+		4A1B2C3D0000000000000073 /* FloatingToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingToolbar.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -49,7 +57,7 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		4A1B2C3D000000000000000B /* = ROOT GROUP */ = {
+		4A1B2C3D000000000000000B = {
 			isa = PBXGroup;
 			children = (
 				4A1B2C3D0000000000000020 /* Quanta */,
@@ -97,6 +105,10 @@
 				4A1B2C3D0000000000000036 /* PDFAnnotationView.swift */,
 				4A1B2C3D0000000000000037 /* NoteCardView.swift */,
 				4A1B2C3D0000000000000038 /* ShareSheet.swift */,
+				4A1B2C3D0000000000000070 /* SubjectListView.swift */,
+				4A1B2C3D0000000000000071 /* Theme.swift */,
+				4A1B2C3D0000000000000072 /* CanvasBackgroundView.swift */,
+				4A1B2C3D0000000000000073 /* FloatingToolbar.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -189,6 +201,10 @@
 				4A1B2C3D0000000000000048 /* ShareSheet.swift in Sources */,
 				4A1B2C3D0000000000000049 /* NoteViewModel.swift in Sources */,
 				4A1B2C3D000000000000004B /* Quanta.xcdatamodeld in Sources */,
+				4A1B2C3D0000000000000080 /* SubjectListView.swift in Sources */,
+				4A1B2C3D0000000000000081 /* Theme.swift in Sources */,
+				4A1B2C3D0000000000000082 /* CanvasBackgroundView.swift in Sources */,
+				4A1B2C3D0000000000000083 /* FloatingToolbar.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -320,6 +336,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 73YCCX7A93;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Quanta/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Quanta;
@@ -349,6 +366,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 73YCCX7A93;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Quanta/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Quanta;

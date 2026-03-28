@@ -21,30 +21,25 @@ struct PageAnnotations: Codable {
         (try? JSONEncoder().encode(self)) ?? Data()
     }
 
-    // Custom coding to handle Int keys in JSON (JSON only supports String keys)
     enum CodingKeys: String, CodingKey {
         case pages
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        let stringKeyedPages = try container.decode([String: Data].self, forKey: .pages)
-        var intKeyedPages: [Int: Data] = [:]
-        for (key, value) in stringKeyedPages {
-            if let intKey = Int(key) {
-                intKeyedPages[intKey] = value
-            }
+        let stringKeyed = try container.decode([String: Data].self, forKey: .pages)
+        var result: [Int: Data] = [:]
+        for (key, value) in stringKeyed {
+            if let intKey = Int(key) { result[intKey] = value }
         }
-        pages = intKeyedPages
+        pages = result
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        var stringKeyedPages: [String: Data] = [:]
-        for (key, value) in pages {
-            stringKeyedPages[String(key)] = value
-        }
-        try container.encode(stringKeyedPages, forKey: .pages)
+        var stringKeyed: [String: Data] = [:]
+        for (key, value) in pages { stringKeyed[String(key)] = value }
+        try container.encode(stringKeyed, forKey: .pages)
     }
 }
 
@@ -60,32 +55,28 @@ struct PDFAnnotationView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // PDF page with drawing overlay
             GeometryReader { geo in
                 ZStack {
-                    Color(.systemGray5)
+                    Color.white
 
                     if let image = pageImage {
-                        let pageSize = fitSize(
-                            for: image.size,
-                            in: geo.size
-                        )
+                        let fitSize = fitSize(for: image.size, in: geo.size)
 
                         ZStack {
                             Image(uiImage: image)
                                 .resizable()
-                                .frame(width: pageSize.width, height: pageSize.height)
+                                .frame(width: fitSize.width, height: fitSize.height)
+                                .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
 
                             DrawingCanvasView(drawingData: $currentDrawing, isOverlay: true)
-                                .frame(width: pageSize.width, height: pageSize.height)
+                                .frame(width: fitSize.width, height: fitSize.height)
                         }
                     }
                 }
             }
 
-            // Page navigation bar
             if pageCount > 1 {
-                pageNavigationBar
+                pageNavigation
             }
         }
         .onAppear {
@@ -99,24 +90,21 @@ struct PDFAnnotationView: View {
         }
     }
 
-    private var pageNavigationBar: some View {
-        HStack(spacing: 20) {
-            Button {
-                changePage(to: currentPage - 1)
-            } label: {
+    private var pageNavigation: some View {
+        HStack(spacing: 24) {
+            Button { changePage(to: currentPage - 1) } label: {
                 Image(systemName: "chevron.left.circle.fill")
                     .font(.title3)
                     .symbolRenderingMode(.hierarchical)
             }
             .disabled(currentPage <= 0)
 
-            Text("Page \(currentPage + 1) of \(pageCount)")
-                .font(.subheadline.monospacedDigit())
+            Text("\(currentPage + 1) / \(pageCount)")
+                .font(.system(.subheadline, design: .rounded, weight: .medium))
+                .monospacedDigit()
                 .foregroundStyle(.secondary)
 
-            Button {
-                changePage(to: currentPage + 1)
-            } label: {
+            Button { changePage(to: currentPage + 1) } label: {
                 Image(systemName: "chevron.right.circle.fill")
                     .font(.title3)
                     .symbolRenderingMode(.hierarchical)
@@ -127,8 +115,6 @@ struct PDFAnnotationView: View {
         .frame(maxWidth: .infinity)
         .background(.ultraThinMaterial)
     }
-
-    // MARK: - Logic
 
     private func loadPDF() {
         guard let document = PDFDocument(data: pdfData) else { return }
@@ -141,8 +127,7 @@ struct PDFAnnotationView: View {
               let page = document.page(at: currentPage) else { return }
         let bounds = page.bounds(for: .mediaBox)
         let scale: CGFloat = 2.0
-        let size = CGSize(width: bounds.width * scale, height: bounds.height * scale)
-        pageImage = page.thumbnail(of: size, for: .mediaBox)
+        pageImage = page.thumbnail(of: CGSize(width: bounds.width * scale, height: bounds.height * scale), for: .mediaBox)
     }
 
     private func changePage(to newPage: Int) {
@@ -159,12 +144,7 @@ struct PDFAnnotationView: View {
     }
 
     private func fitSize(for imageSize: CGSize, in containerSize: CGSize) -> CGSize {
-        let scaleX = containerSize.width / imageSize.width
-        let scaleY = containerSize.height / imageSize.height
-        let scale = min(scaleX, scaleY)
-        return CGSize(
-            width: imageSize.width * scale,
-            height: imageSize.height * scale
-        )
+        let scale = min(containerSize.width / imageSize.width, containerSize.height / imageSize.height)
+        return CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
     }
 }

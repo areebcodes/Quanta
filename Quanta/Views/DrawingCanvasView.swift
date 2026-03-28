@@ -12,15 +12,17 @@ struct DrawingCanvasView: UIViewRepresentable {
         canvas.backgroundColor = isOverlay ? .clear : .white
         canvas.isOpaque = !isOverlay
         canvas.tool = PKInkingTool(.pen, color: .black, width: 3)
+        canvas.overrideUserInterfaceStyle = .light
 
         if !drawingData.isEmpty, let drawing = try? PKDrawing(data: drawingData) {
             canvas.drawing = drawing
         }
 
-        // Show PencilKit tool picker
+        // Show system PencilKit tool picker
         let toolPicker = PKToolPicker()
         toolPicker.setVisible(true, forFirstResponder: canvas)
         toolPicker.addObserver(canvas)
+        toolPicker.overrideUserInterfaceStyle = .light
         canvas.becomeFirstResponder()
         context.coordinator.toolPicker = toolPicker
 

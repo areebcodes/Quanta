@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NoteCardView: View {
     @ObservedObject var note: Note
+    var accentColor: Color?
 
     private var formattedDate: String {
         guard let date = note.updatedAt else { return "" }
@@ -10,19 +11,63 @@ struct NoteCardView: View {
         return formatter.localizedString(for: date, relativeTo: Date())
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            thumbnailArea
-            infoArea
-        }
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+    private var subjectName: String? {
+        note.subject?.name
     }
 
-    private var thumbnailArea: some View {
+    private var subjectColorValue: Color {
+        accentColor ?? QuantaTheme.color(for: note.subject?.colorName ?? "blue")
+    }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            // Thumbnail
+            thumbnailView
+                .frame(width: 80, height: 60)
+                .clipShape(RoundedRectangle(cornerRadius: QuantaTheme.smallRadius, style: .continuous))
+
+            // Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(note.title ?? "Untitled")
+                    .font(QuantaTheme.headline)
+                    .lineLimit(1)
+                    .foregroundStyle(.primary)
+
+                HStack(spacing: 6) {
+                    if note.pdfData != nil {
+                        Label("PDF", systemImage: "doc.richtext.fill")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.blue.gradient, in: Capsule())
+                    }
+
+                    if let name = subjectName {
+                        Text(name)
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .foregroundStyle(subjectColorValue)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(subjectColorValue.opacity(0.12), in: Capsule())
+                    }
+
+                    Spacer()
+
+                    Text(formattedDate)
+                        .font(QuantaTheme.caption)
+                        .foregroundStyle(.tertiary)
+                        .monospacedDigit()
+                }
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    @ViewBuilder
+    private var thumbnailView: some View {
         ZStack {
-            Rectangle()
+            RoundedRectangle(cornerRadius: QuantaTheme.smallRadius, style: .continuous)
                 .fill(Color(.systemGray6))
 
             if let data = note.thumbnailData, let uiImage = UIImage(data: data) {
@@ -30,38 +75,14 @@ struct NoteCardView: View {
                     .resizable()
                     .scaledToFill()
             } else if note.pdfData != nil {
-                VStack(spacing: 8) {
-                    Image(systemName: "doc.richtext.fill")
-                        .font(.system(size: 36))
-                    Text("PDF")
-                        .font(.caption.bold())
-                }
-                .foregroundStyle(.secondary)
+                Image(systemName: "doc.richtext.fill")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
             } else {
-                VStack(spacing: 8) {
-                    Image(systemName: "pencil.tip")
-                        .font(.system(size: 36))
-                    Text("Drawing")
-                        .font(.caption.bold())
-                }
-                .foregroundStyle(.secondary)
+                Image(systemName: "pencil.tip")
+                    .font(.title3)
+                    .foregroundStyle(.quaternary)
             }
         }
-        .aspectRatio(4.0 / 3.0, contentMode: .fit)
-        .clipped()
-    }
-
-    private var infoArea: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(note.title ?? "Untitled")
-                .font(.headline)
-                .lineLimit(1)
-                .foregroundStyle(.primary)
-
-            Text(formattedDate)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-        .padding(12)
     }
 }

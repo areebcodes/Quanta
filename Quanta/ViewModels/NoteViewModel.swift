@@ -7,12 +7,13 @@ import UIKit
 class NoteViewModel: ObservableObject {
     static let shared = NoteViewModel()
 
-    func createNote(in context: NSManagedObjectContext) -> Note {
+    func createNote(in context: NSManagedObjectContext, subject: Subject? = nil) -> Note {
         let note = Note(context: context)
         note.id = UUID()
         note.title = "Untitled"
         note.createdAt = Date()
         note.updatedAt = Date()
+        note.subject = subject
         try? context.save()
         return note
     }
@@ -32,6 +33,8 @@ class NoteViewModel: ObservableObject {
         copy.pdfData = note.pdfData
         copy.annotationsData = note.annotationsData
         copy.thumbnailData = note.thumbnailData
+        copy.canvasStyle = note.canvasStyle
+        copy.subject = note.subject
         try? context.save()
         return copy
     }
@@ -59,24 +62,14 @@ class NoteViewModel: ObservableObject {
     func generatePDFThumbnail(from pdfData: Data) -> Data? {
         guard let document = PDFDocument(data: pdfData),
               let page = document.page(at: 0) else { return nil }
-        let thumbnail = page.thumbnail(
-            of: CGSize(width: 400, height: 300),
-            for: .mediaBox
-        )
+        let thumbnail = page.thumbnail(of: CGSize(width: 400, height: 300), for: .mediaBox)
         return thumbnail.jpegData(compressionQuality: 0.7)
     }
 
     static func aspectFitRect(for imageSize: CGSize, in containerSize: CGSize) -> CGRect {
-        let scaleX = containerSize.width / imageSize.width
-        let scaleY = containerSize.height / imageSize.height
-        let scale = min(scaleX, scaleY)
+        let scale = min(containerSize.width / imageSize.width, containerSize.height / imageSize.height)
         let w = imageSize.width * scale
         let h = imageSize.height * scale
-        return CGRect(
-            x: (containerSize.width - w) / 2,
-            y: (containerSize.height - h) / 2,
-            width: w,
-            height: h
-        )
+        return CGRect(x: (containerSize.width - w) / 2, y: (containerSize.height - h) / 2, width: w, height: h)
     }
 }
