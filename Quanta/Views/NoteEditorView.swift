@@ -13,10 +13,12 @@ struct NoteEditorView: View {
     @State private var annotationsData: Data = Data()
     @State private var selectedTool: CanvasTool = .pen
     @State private var selectedColor: Color = .black
+    @State private var selectedSize: ToolSize = .medium
     @State private var canvasUndoManager: UndoManager?
     @State private var showingShareSheet = false
     @State private var shareItems: [Any] = []
-    @State private var showingSubjectPicker = false
+    @State private var currentPage = 1
+    @State private var totalPages = 3
 
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \Subject.sortOrder, ascending: true)]
@@ -25,10 +27,22 @@ struct NoteEditorView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            canvas
+            // Canvas area with page indicator
+            ZStack(alignment: .bottom) {
+                canvas
+
+                // Page indicator
+                if note.pdfData == nil {
+                    pageIndicator
+                        .padding(.bottom, 8)
+                }
+            }
+
+            // Toolbar
             CanvasToolbar(
                 selectedTool: $selectedTool,
                 selectedColor: $selectedColor,
+                selectedSize: $selectedSize,
                 onUndo: { canvasUndoManager?.undo() },
                 onRedo: { canvasUndoManager?.redo() }
             )
@@ -46,7 +60,7 @@ struct NoteEditorView: View {
         .onChange(of: drawingData) { _, _ in
             note.drawingData = drawingData
             note.updatedAt = Date()
-            generateDrawingThumbnail()
+            generateThumbnail()
             save()
         }
         .onChange(of: annotationsData) { _, _ in
@@ -54,6 +68,17 @@ struct NoteEditorView: View {
             note.updatedAt = Date()
             save()
         }
+    }
+
+    // MARK: - Page Indicator
+
+    private var pageIndicator: some View {
+        Text("Page \(currentPage) of \(totalPages)")
+            .font(.system(size: 11, weight: .medium, design: .rounded))
+            .foregroundStyle(.white.opacity(0.6))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .background(.black.opacity(0.5), in: Capsule())
     }
 
     // MARK: - Canvas
@@ -66,6 +91,7 @@ struct NoteEditorView: View {
                 annotationsData: $annotationsData,
                 selectedTool: selectedTool,
                 selectedColor: selectedColor,
+                selectedSize: selectedSize,
                 onUndoManagerReady: { canvasUndoManager = $0 }
             )
         } else {
@@ -73,7 +99,12 @@ struct NoteEditorView: View {
                 drawingData: $drawingData,
                 selectedTool: selectedTool,
                 selectedColor: selectedColor,
-                onUndoManagerReady: { canvasUndoManager = $0 }
+                selectedSize: selectedSize,
+                onUndoManagerReady: { canvasUndoManager = $0 },
+                onPageChange: { page, total in
+                    currentPage = page + 1
+                    totalPages = total
+                }
             )
         }
     }
@@ -161,16 +192,45 @@ struct NoteEditorView: View {
             if let exported = exportAnnotatedPDF(pdfData: pdfData) {
                 items.append(exported)
             }
-        } else if !drawingData.isEmpty, let drawing = try? PKDrawing(data: drawingData) {
-            let bounds = drawing.bounds
-            if !bounds.isEmpty {
-                items.append(drawing.image(from: bounds.insetBy(dx: -20, dy: -20), scale: 2.0))
+        } else if !drawingData.isEmpty {
+            if let exported = exportPaginatedDrawing() {
+                items.append(exported)
             }
         }
 
         if !items.isEmpty {
             shareItems = items
             showingShareSheet = true
+        }
+    }
+
+    private func exportPaginatedDrawing() -> Data? {
+        guard let drawing = try? PKDrawing(data: drawingData) else { return nil }
+
+        let screenWidth = UIScreen.main.bounds.width
+        let margin: CGFloat = 40
+        let canvasPageWidth = screenWidth - margin * 2
+        let canvasPageHeight = canvasPageWidth * QuantaTheme.pageRatio
+        let gap = QuantaTheme.pageGap
+        let xOffset = (screenWidth - canvasPageWidth) / 2
+
+        // Letter size in points
+        let letterWidth: CGFloat = 612
+        let letterHeight: CGFloat = 792
+        let pageBounds = CGRect(x: 0, y: 0, width: letterWidth, height: letterHeight)
+
+        let maxY = drawing.bounds.maxY
+        let exportPageCount = max(1, Int(ceil((maxY - gap) / (canvasPageHeight + gap))) + 1)
+
+        let renderer = UIGraphicsPDFRenderer(bounds: pageBounds)
+        return renderer.pdfData { context in
+            for i in 0..<exportPageCount {
+                context.beginPage()
+                let pageTop = gap + CGFloat(i) * (canvasPageHeight + gap)
+                let clipRect = CGRect(x: xOffset, y: pageTop, width: canvasPageWidth, height: canvasPageHeight)
+                let image = drawing.image(from: clipRect, scale: 2.0)
+                image.draw(in: pageBounds)
+            }
         }
     }
 
@@ -191,8 +251,8 @@ struct NoteEditorView: View {
                 page.draw(with: .mediaBox, to: cgContext)
                 cgContext.restoreGState()
                 if let drawingDataForPage = annotations.pages[i],
-                   let drawing = try? PKDrawing(data: drawingDataForPage) {
-                    drawing.image(from: bounds, scale: 2.0).draw(in: bounds)
+                   let pageDrawing = try? PKDrawing(data: drawingDataForPage) {
+                    pageDrawing.image(from: bounds, scale: 2.0).draw(in: bounds)
                 }
             }
         }
@@ -200,15 +260,23 @@ struct NoteEditorView: View {
 
     // MARK: - Thumbnails
 
-    private func generateDrawingThumbnail() {
+    private func generateThumbnail() {
         guard !drawingData.isEmpty, let drawing = try? PKDrawing(data: drawingData) else {
             note.thumbnailData = nil
             return
         }
-        let bounds = drawing.bounds
-        guard !bounds.isEmpty else { return }
+
+        // Capture first page area
+        let screenWidth = UIScreen.main.bounds.width
+        let margin: CGFloat = 40
+        let canvasPageWidth = screenWidth - margin * 2
+        let canvasPageHeight = canvasPageWidth * QuantaTheme.pageRatio
+        let gap = QuantaTheme.pageGap
+        let xOffset = (screenWidth - canvasPageWidth) / 2
+        let firstPageRect = CGRect(x: xOffset, y: gap, width: canvasPageWidth, height: canvasPageHeight)
+
+        let image = drawing.image(from: firstPageRect, scale: 1.0)
         let targetSize = CGSize(width: 400, height: 300)
-        let image = drawing.image(from: bounds, scale: 1.0)
         let renderer = UIGraphicsImageRenderer(size: targetSize)
         let thumbnail = renderer.image { _ in
             UIColor.white.setFill()

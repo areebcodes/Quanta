@@ -3,15 +3,16 @@ import CoreData
 import PDFKit
 import UniformTypeIdentifiers
 
-struct DashboardView: View {
+struct NoteGridView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    let selectedSubject: Subject?
     @Binding var path: NavigationPath
 
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \Note.updatedAt, ascending: false)],
         animation: .spring(response: 0.35)
     )
-    private var notes: FetchedResults<Note>
+    private var allNotes: FetchedResults<Note>
 
     @State private var searchText = ""
     @State private var showPDFImporter = false
@@ -22,22 +23,34 @@ struct DashboardView: View {
     ]
 
     private var filteredNotes: [Note] {
-        if searchText.isEmpty { return Array(notes) }
-        return notes.filter { ($0.title ?? "").localizedCaseInsensitiveContains(searchText) }
+        var notes = Array(allNotes)
+        if let subject = selectedSubject {
+            notes = notes.filter { $0.subject?.objectID == subject.objectID }
+        }
+        if !searchText.isEmpty {
+            notes = notes.filter { ($0.title ?? "").localizedCaseInsensitiveContains(searchText) }
+        }
+        return notes
+    }
+
+    private var headerTitle: String {
+        if let subject = selectedSubject {
+            return "\(subject.emoji ?? "") \(subject.name ?? "")"
+        }
+        return "All Notes"
     }
 
     var body: some View {
         ZStack {
-            // Background
             QuantaTheme.darkBg.ignoresSafeArea()
 
-            if notes.isEmpty {
+            if filteredNotes.isEmpty && searchText.isEmpty {
                 emptyState
             } else {
                 noteGrid
             }
 
-            // Floating + button
+            // FAB
             VStack {
                 Spacer()
                 HStack {
@@ -48,7 +61,7 @@ struct DashboardView: View {
                 }
             }
         }
-        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .fileImporter(isPresented: $showPDFImporter, allowedContentTypes: [.pdf]) { result in
             importPDF(result: result)
         }
@@ -61,6 +74,7 @@ struct DashboardView: View {
             VStack(spacing: 0) {
                 header
                 searchBar
+
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(filteredNotes, id: \.objectID) { note in
                         Button {
@@ -79,7 +93,7 @@ struct DashboardView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 100) // space for FAB
+                .padding(.bottom, 100)
             }
         }
     }
@@ -87,35 +101,18 @@ struct DashboardView: View {
     // MARK: - Empty State
 
     private var emptyState: some View {
-        VStack(spacing: 20) {
-            Spacer()
+        VStack(spacing: 16) {
+            Image(systemName: "note.text")
+                .font(.system(size: 48))
+                .foregroundStyle(.white.opacity(0.15))
 
-            Text("Quanta")
-                .font(.system(size: 48, weight: .heavy, design: .rounded))
-                .foregroundStyle(QuantaTheme.gold)
+            Text("No notes yet")
+                .font(QuantaTheme.headline)
+                .foregroundStyle(.white.opacity(0.4))
 
-            Text("Your notes live here")
+            Text("Tap + to create one")
                 .font(QuantaTheme.subheadline)
-                .foregroundStyle(.white.opacity(0.5))
-
-            Menu {
-                Button { createNote() } label: {
-                    Label("New Note", systemImage: "pencil.tip")
-                }
-                Button { showPDFImporter = true } label: {
-                    Label("Import PDF", systemImage: "doc.badge.plus")
-                }
-            } label: {
-                Text("Create")
-                    .font(QuantaTheme.headline)
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 14)
-                    .background(QuantaTheme.gold, in: Capsule())
-            }
-            .padding(.top, 8)
-
-            Spacer()
+                .foregroundStyle(.white.opacity(0.25))
         }
     }
 
@@ -123,9 +120,9 @@ struct DashboardView: View {
 
     private var header: some View {
         HStack {
-            Text("Quanta")
-                .font(QuantaTheme.wordmark)
-                .foregroundStyle(QuantaTheme.gold)
+            Text(headerTitle)
+                .font(QuantaTheme.title)
+                .foregroundStyle(.white)
             Spacer()
         }
         .padding(.horizontal, 24)
@@ -178,6 +175,7 @@ struct DashboardView: View {
         note.title = "Untitled"
         note.createdAt = Date()
         note.updatedAt = Date()
+        note.subject = selectedSubject
         try? viewContext.save()
         path.append(note.objectID)
     }
@@ -194,6 +192,7 @@ struct DashboardView: View {
         note.createdAt = Date()
         note.updatedAt = Date()
         note.pdfData = data
+        note.subject = selectedSubject
 
         if let doc = PDFDocument(data: data), let page = doc.page(at: 0) {
             let thumb = page.thumbnail(of: CGSize(width: 400, height: 300), for: .mediaBox)

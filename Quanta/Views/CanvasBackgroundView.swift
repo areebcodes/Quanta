@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct CanvasBackgroundView: View {
-    let style: CanvasStyle
+    let style: QuantaTheme.CanvasStyle
     let lineSpacing: CGFloat = 28
     let lineColor = Color(.systemGray4).opacity(0.5)
     let dotColor = Color(.systemGray4).opacity(0.6)
@@ -21,7 +21,6 @@ struct CanvasBackgroundView: View {
                     context.stroke(path, with: .color(lineColor), lineWidth: 0.5)
                     y += lineSpacing
                 }
-                // Left margin line
                 let marginPath = Path { p in
                     p.move(to: CGPoint(x: 72, y: 0))
                     p.addLine(to: CGPoint(x: 72, y: size.height))
@@ -31,7 +30,6 @@ struct CanvasBackgroundView: View {
             .background(Color.white)
         case .grid:
             Canvas { context, size in
-                // Horizontal
                 var y: CGFloat = lineSpacing
                 while y < size.height {
                     let path = Path { p in
@@ -41,7 +39,6 @@ struct CanvasBackgroundView: View {
                     context.stroke(path, with: .color(lineColor), lineWidth: 0.5)
                     y += lineSpacing
                 }
-                // Vertical
                 var x: CGFloat = lineSpacing
                 while x < size.width {
                     let path = Path { p in

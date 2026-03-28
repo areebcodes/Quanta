@@ -46,6 +46,7 @@ struct PDFAnnotationView: View {
     @Binding var annotationsData: Data
     var selectedTool: CanvasTool
     var selectedColor: Color
+    var selectedSize: ToolSize = .medium
     var onUndoManagerReady: ((UndoManager?) -> Void)?
 
     @State private var currentPage = 0
@@ -58,19 +59,27 @@ struct PDFAnnotationView: View {
         VStack(spacing: 0) {
             GeometryReader { geo in
                 ZStack {
-                    Color.white
+                    QuantaTheme.darkBg
 
                     if let image = pageImage {
                         let fitSize = fitSize(for: image.size, in: geo.size)
                         ZStack {
+                            // Page with shadow
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(.white)
+                                .frame(width: fitSize.width, height: fitSize.height)
+                                .shadow(color: .black.opacity(0.3), radius: 10, y: 4)
+
                             Image(uiImage: image)
                                 .resizable()
                                 .frame(width: fitSize.width, height: fitSize.height)
+                                .clipShape(RoundedRectangle(cornerRadius: 3))
 
                             DrawingCanvasView(
                                 drawingData: $currentDrawing,
                                 selectedTool: selectedTool,
                                 selectedColor: selectedColor,
+                                selectedSize: selectedSize,
                                 isOverlay: true,
                                 onUndoManagerReady: onUndoManagerReady
                             )
@@ -104,10 +113,10 @@ struct PDFAnnotationView: View {
             }
             .disabled(currentPage <= 0)
 
-            Text("\(currentPage + 1) / \(pageCount)")
+            Text("Page \(currentPage + 1) of \(pageCount)")
                 .font(.system(.subheadline, design: .rounded, weight: .medium))
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.white.opacity(0.6))
 
             Button { changePage(to: currentPage + 1) } label: {
                 Image(systemName: "chevron.right.circle.fill")
@@ -148,7 +157,9 @@ struct PDFAnnotationView: View {
     }
 
     private func fitSize(for imageSize: CGSize, in containerSize: CGSize) -> CGSize {
-        let scale = min(containerSize.width / imageSize.width, containerSize.height / imageSize.height)
+        let padding: CGFloat = 32
+        let available = CGSize(width: containerSize.width - padding * 2, height: containerSize.height - padding * 2)
+        let scale = min(available.width / imageSize.width, available.height / imageSize.height)
         return CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
     }
 }
