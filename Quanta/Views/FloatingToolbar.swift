@@ -13,23 +13,18 @@ struct FloatingToolbar: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            // Drag handle
             Image(systemName: "line.3.horizontal")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .frame(width: 20)
 
-            Divider()
-                .frame(height: 20)
+            Divider().frame(height: 20)
 
-            // Undo / Redo
             toolButton(icon: "arrow.uturn.backward", action: onUndo)
             toolButton(icon: "arrow.uturn.forward", action: onRedo)
 
-            Divider()
-                .frame(height: 20)
+            Divider().frame(height: 20)
 
-            // Canvas style picker
             Button {
                 showCanvasStylePicker.toggle()
             } label: {
@@ -43,13 +38,9 @@ struct FloatingToolbar: View {
                 canvasStylePopover
             }
 
-            Divider()
-                .frame(height: 20)
+            Divider().frame(height: 20)
 
-            // Import PDF
             toolButton(icon: "doc.badge.plus", action: onImportPDF)
-
-            // Export
             toolButton(icon: "square.and.arrow.up", action: onExport)
         }
         .floatingPill()
@@ -83,36 +74,39 @@ struct FloatingToolbar: View {
     }
 
     private var canvasStylePopover: some View {
-        VStack(spacing: 4) {
-            ForEach(Array(CanvasStyle.allCases), id: \.rawValue) { style in
-                Button {
-                    withAnimation(.spring(response: 0.25)) {
-                        canvasStyle = style
-                    }
-                    showCanvasStylePicker = false
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: style.icon)
-                            .font(.system(size: 14, weight: .medium))
-                            .frame(width: 24)
-                        Text(style.label)
-                            .font(QuantaTheme.subheadline)
-                        Spacer()
-                        if canvasStyle == style {
-                            Image(systemName: "checkmark")
-                                .font(.caption.bold())
-                                .foregroundStyle(.accentColor)
-                        }
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
+        VStack(spacing: 0) {
+            styleRow(style: .blank)
+            styleRow(style: .ruled)
+            styleRow(style: .grid)
+            styleRow(style: .dotted)
         }
         .padding(.vertical, 6)
         .frame(width: 180)
         .presentationCompactAdaptation(.popover)
+    }
+
+    private func styleRow(style: CanvasStyle) -> some View {
+        Button {
+            canvasStyle = style
+            showCanvasStylePicker = false
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: style.icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .frame(width: 24)
+                Text(style.label)
+                    .font(QuantaTheme.subheadline)
+                Spacer()
+                if canvasStyle == style {
+                    Image(systemName: "checkmark")
+                        .font(.caption.bold())
+                        .foregroundStyle(.accentColor)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
